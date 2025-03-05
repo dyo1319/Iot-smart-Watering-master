@@ -1,0 +1,11 @@
+{
+    "state":"64",
+    "tempMode": {
+        "temp":23.50,
+        "minTime": 1,
+        "maxTime": 3
+    },
+    "SOILMOISTURE":{
+        
+    }
+}
