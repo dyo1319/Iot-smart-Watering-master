@@ -1,7 +1,7 @@
 {
-    "state": "64",
+    "state": "61",
     "tempMode": {
-        "temp": 23.50,
+        "temp": 23.5,
         "minTime": 1,
         "maxTime": 3
     },
@@ -11,12 +11,20 @@
     },
     "SABBATH": {
         "schedule": [
-            {"dayOfWeek": 5, "startHour": 18, "duration": 30},
-            {"dayOfWeek": 6, "startHour": 8, "duration": 20}
+            {
+                "dayOfWeek": 5,
+                "startHour": 18,
+                "duration": 30
+            },
+            {
+                "dayOfWeek": 6,
+                "startHour": 8,
+                "duration": 20
+            }
         ]
     },
     "MANUAL": {
-        "pumpState": false,
-        "lastCommand": 0
+        "pumpState": true,
+        "lastCommand": 1741360341473
     }
 }
