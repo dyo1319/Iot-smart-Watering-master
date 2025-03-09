@@ -1,7 +1,7 @@
 {
     "state": "61",
     "tempMode": {
-        "temp": 23.5,
+        "temp": 30.5,
         "minTime": 1,
         "maxTime": 3
     },
@@ -24,7 +24,7 @@
         ]
     },
     "MANUAL": {
-        "pumpState": true,
-        "lastCommand": 1741360341473
+        "pumpState": false,
+        "lastCommand": 1741480020456
     }
 }

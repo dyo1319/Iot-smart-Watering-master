@@ -117,6 +117,7 @@ router.get('/state', async (req, res) => {
     }
 });
 
+
 //  Get specific mode data
 router.get('/dataMode', async (req, res) => {
     try {
