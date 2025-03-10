@@ -8,7 +8,7 @@
 #define MoistureSensore 39
 
 // ----- General data -----
-#define DHTTYPE DHT22
+#define DHTTYPE DHT11
 DHT dht(dhtPin, DHTTYPE);
 JsonDocument doc;
 float CurrentTemp;
@@ -18,6 +18,14 @@ float temp;
 int minT, maxT;
 bool isOnPump = false;
 int countOn = 0;
+
+//Water Schudle Time
+unsigned long lastWateringTime = 0;
+bool morningWateringDone = false;
+bool eveningWateringDone = false;
+int currentHour = 0;
+#define MORNING_HOUR 7  // 7 AM
+#define EVENING_HOUR 20 // 7 PM
 
 //----- State machine -----
 #define TEMP_MODE 61
@@ -30,16 +38,18 @@ unsigned long DataPullTime;
 unsigned long activationTime;
 unsigned long wateringDuration;
 
+
 void setup() {
   pinMode(pump, OUTPUT);
   Serial.begin(115200);
   WiFi_SETUP();
   dht.begin();
-  fetchWateringData();
-
+  digitalWrite(pump, HIGH); // Make sure pump is OFF at startup
+  isOnPump = false;
   statusCheckTime = millis();
-  DataPullTime = millis();
+  DataPullTime = millis(); // Initialize this to trigger initial data fetch
 }
+
 
 void loop() {
   //Check State Every 10mins
@@ -61,49 +71,88 @@ void loop() {
  }
 }
 
+
 void handleTempMode() {
-  CurrentTemp = dht.readTemperature();// read temp from sensor live
-  light = map(analogRead(lightSensor),0,4095,0,100);//read light from sensor live
-
-  //after 2 mins asgin the values and then Get Data every 2mins
+  // Read sensor data
+  CurrentTemp = dht.readTemperature();
+  light = map(analogRead(lightSensor), 0, 4095, 0, 100);
+  int moisture = map(analogRead(MoistureSensore), 0, 4095, 0, 100);
+  
+  // Fetch data from server periodically
   if ((millis() - DataPullTime) > (2 * minutes)) {
-        fetchWateringData();
+    // Send data to server
+    sendData(CurrentTemp, light, moisture);
+    // Fetch updated settings and time
+    fetchWateringData();
+    currentHour = getCurrentHour();
+    DataPullTime = millis();
   }
-
-      Serial.println(temp);
-      Serial.println(minT);
-      Serial.println(maxT);
-      delay(1000);
-
-  //check if should water
-  if(CurrentTemp > temp){
-    wateringDuration = (maxT * minutes);
-  }else {
-    wateringDuration = (minT * minutes);
+  
+  // If pump is already running, check if watering duration is complete
+  if (isOnPump) {
+    if (millis() - activationTime >= wateringDuration) {
+      TurnOffPump();
+    }
+    return; // Skip the rest of the function while pump is running
   }
-  //turn on pump with the desired time
-  if (!isOnPump) {
+  
+  // Reset daily flags at midnight
+  if (currentHour == 0) {
+    morningWateringDone = false;
+    eveningWateringDone = false;
+  }
+  
+  // Priority condition #1: Evening watering (highest priority)
+  if ((currentHour == EVENING_HOUR || currentHour == 21) && !eveningWateringDone) {
+    calculateWateringDuration();
     TurnOnPump();
-    activationTime = millis(); // התחלת זמן ההשקיה
+    eveningWateringDone = true;
+    return;
   }
-
-  //turn off tump after desired time.
-  if (isOnPump && (millis() - activationTime >= wateringDuration)) {
-    TurnOffPump();
+  
+  // Priority condition #2: Shade-based watering (medium priority)
+  // If light level is low (shady) and morning watering hasn't happened yet
+  if (light < 30 && !morningWateringDone && currentHour > 6 && currentHour < 17) {
+    calculateWateringDuration();
+    TurnOnPump();
+    morningWateringDone = true;
+    return;
   }
-
+  
+  // Fallback condition: Morning scheduled watering if no shade opportunity occurred
+  if (currentHour == MORNING_HOUR && !morningWateringDone) {
+    calculateWateringDuration();
+    TurnOnPump();
+    morningWateringDone = true;
+    return;
+  }
 }
+
 
 void TurnOnPump() {
   Serial.println("Pump ON");
   digitalWrite(pump, LOW);
   isOnPump = true;
+  activationTime = millis();
+  
+  // Send updated status immediately after turning pump on
+  CurrentTemp = dht.readTemperature();
+  light = map(analogRead(lightSensor), 0, 4095, 0, 100);
+  int moisture = map(analogRead(MoistureSensore), 0, 4095, 0, 100);
+  sendData(CurrentTemp, light, moisture);
 }
 
 void TurnOffPump() {
   Serial.println("Pump OFF");
   digitalWrite(pump, HIGH);
   isOnPump = false;
+  lastWateringTime = millis();
+  
+  // Send updated status immediately after turning pump off
+  CurrentTemp = dht.readTemperature();
+  light = map(analogRead(lightSensor), 0, 4095, 0, 100);
+  int moisture = map(analogRead(MoistureSensore), 0, 4095, 0, 100);
+  sendData(CurrentTemp, light, moisture);
 }
 
 void fetchWateringData() {
@@ -133,3 +182,17 @@ void fetchWateringData() {
     }
 }
 
+// Helper function to calculate watering duration based on temperature
+void calculateWateringDuration() {
+  if (CurrentTemp > temp) {
+    wateringDuration = (maxT * minutes);
+    Serial.print("Temperature above threshold. Watering for ");
+    Serial.print(maxT);
+    Serial.println(" minutes");
+  } else {
+    wateringDuration = (minT * minutes);
+    Serial.print("Temperature below threshold. Watering for ");
+    Serial.print(minT);
+    Serial.println(" minutes");
+  }
+}

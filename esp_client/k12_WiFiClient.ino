@@ -44,6 +44,7 @@ void sendData(float temp, int light, int moisture){
   http.end();
 }
 
+// Helper function to get current state from server
 int GetState() {
   int ret = -1;
   HTTPClient http;
@@ -81,4 +82,29 @@ String getJsonData(String state){
   
   http.end();
   return json;
+}
+
+
+// Helper function to get current hour from server
+int getCurrentHour() {
+  HTTPClient http;
+  
+  http.begin(client, String(serverAddress) + "/esp/state");
+  int httpCode = http.GET();
+  
+  if (httpCode == HTTP_CODE_OK) {
+    String response = http.getString();
+    
+    JsonDocument stateDoc;
+    DeserializationError error = deserializeJson(stateDoc, response);
+    
+    if (!error && stateDoc.containsKey("date")) {
+      int hour = stateDoc["date"];
+      http.end();
+      return hour;
+    }
+  }
+  
+  http.end();
+  return -1; // Error case
 }
