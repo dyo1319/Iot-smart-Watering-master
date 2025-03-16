@@ -2,9 +2,9 @@
 #include <WiFiClient.h>
 #include <HTTPClient.h>
 
-const char* ssid = "Raad";
-const char* password = "95175386240";
-const char* serverAddress = "http://172.20.10.2:3001";
+const char* ssid = "Rageb heno";
+const char* password = "225524133";
+const char* serverAddress = "http://10.100.102.12:3001";
 
 WiFiClient client;
 
@@ -107,4 +107,28 @@ int getCurrentHour() {
   
   http.end();
   return -1; // Error case
+}
+// Helper function to get current day of week from server
+int getCurrentDay() {
+  HTTPClient http;
+  
+  http.begin(client, String(serverAddress) + "/esp/state");
+  int httpCode = http.GET();
+  
+  if (httpCode == HTTP_CODE_OK) {
+    String response = http.getString();
+    
+    JsonDocument stateDoc;
+    DeserializationError error = deserializeJson(stateDoc, response);
+    
+    if (!error && stateDoc.containsKey("day")) {
+      int day = stateDoc["day"];
+      http.end();
+      return day;
+    }
+  }
+  
+  http.end();
+  // Default to Sunday (0) if we can't get the day
+  return 0;
 }

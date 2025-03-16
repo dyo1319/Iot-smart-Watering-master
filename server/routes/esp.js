@@ -107,16 +107,21 @@ router.get('/', async (req, res) => {
 });
 
 //  Get current system state
+// In esp.js
 router.get('/state', async (req, res) => {
     try {
         let data = JSON.parse(await fs.readFile("Inside_information.json", "utf8"));
-        res.json({ state: data.state, date: new Date().getHours() });
+        const now = new Date();
+        res.json({ 
+            state: data.state, 
+            date: now.getHours(),
+            day: now.getDay() // 0 for Sunday, 1 for Monday, etc.
+        });
     } catch (error) {
         console.error("Error reading state:", error);
         res.status(500).json({ error: "Failed to retrieve system state" });
     }
 });
-
 
 //  Get specific mode data
 router.get('/dataMode', async (req, res) => {
